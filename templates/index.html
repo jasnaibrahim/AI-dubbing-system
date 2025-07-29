@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Dubbing Service</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-video me-2"></i>
+                AI Dubbing Service
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-language me-2"></i>
+                            Multi-Language Video Dubbing
+                        </h4>
+                        <p class="mb-0 mt-2">Transform your videos into multiple languages with AI-powered dubbing</p>
+                    </div>
+                    <div class="card-body">
+                        <form id="dubbingForm">
+                            <div class="mb-3">
+                                <label for="youtubeUrl" class="form-label">
+                                    <i class="fab fa-youtube text-danger me-2"></i>
+                                    YouTube URL
+                                </label>
+                                <input type="url" class="form-control" id="youtubeUrl" 
+                                       placeholder="https://www.youtube.com/watch?v=..." required>
+                                <div class="form-text">Enter the YouTube URL of the video you want to dub</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="targetLanguage" class="form-label">
+                                    <i class="fas fa-globe me-2"></i>
+                                    Target Language
+                                </label>
+                                <select class="form-select" id="targetLanguage" required>
+                                    <option value="">Select target language...</option>
+                                    {% for code, name in supported_languages.items() %}
+                                    <option value="{{ code }}">{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="voiceSelect" class="form-label">
+                                    <i class="fas fa-microphone me-2"></i>
+                                    Voice Selection
+                                </label>
+                                <select class="form-select" id="voiceSelect">
+                                    <option value="">Use default voice for language</option>
+                                </select>
+                                <div class="form-text">Choose a specific voice or use the default for the target language</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="cloneVoice">
+                                    <label class="form-check-label" for="cloneVoice">
+                                        <i class="fas fa-clone me-2"></i>
+                                        Clone original speaker's voice (experimental)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-primary" id="previewBtn">
+                                    <i class="fas fa-eye me-2"></i>
+                                    Preview Translation
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-lg" id="dubBtn">
+                                    <i class="fas fa-play me-2"></i>
+                                    Generate Dubbing
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-sm mt-2" onclick="app.showLogs()">
+                                    <i class="fas fa-file-alt me-1"></i>
+                                    View Application Logs
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="card mt-4" id="progressCard" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cogs me-2"></i>
+                            Processing Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="progressBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <p id="progressMessage" class="mb-0">Starting process...</p>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <div class="card mt-4" id="previewCard" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt me-2"></i>
+                            Translation Preview
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="previewContent"></div>
+                    </div>
+                </div>
+
+                <!-- Result Section -->
+                <div class="card mt-4" id="resultCard" style="display: none;">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Dubbing Complete!
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <h3 class="text-center mb-4">Features</h3>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-video fa-3x text-primary mb-3"></i>
+                        <h5>YouTube Integration</h5>
+                        <p>Direct processing of YouTube videos with automatic download and processing</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-language fa-3x text-success mb-3"></i>
+                        <h5>12+ Languages</h5>
+                        <p>Support for major world languages with high-quality AI translation</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-microphone fa-3x text-info mb-3"></i>
+                        <h5>AI Voice Cloning</h5>
+                        <p>Advanced voice synthesis with natural-sounding speech generation</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-light mt-5 py-4">
+        <div class="container text-center">
+            <p class="mb-0">Powered by VideoDB, ElevenLabs, and OpenAI</p>
+        </div>
+    </footer>
+
+    <!-- HLS.js for better video streaming support -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

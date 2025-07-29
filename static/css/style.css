@@ -1,0 +1,205 @@
+/* Custom styles for AI Dubbing Service */
+
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+}
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3);
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn {
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.progress {
+    height: 20px;
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.75rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: var(--secondary-color);
+}
+
+.form-check-label {
+    font-weight: 500;
+}
+
+/* Animation for loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Preview content styling */
+.preview-segment {
+    border-left: 4px solid var(--primary-color);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0 10px 10px 0;
+}
+
+.preview-segment .original {
+    color: var(--secondary-color);
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+.preview-segment .translated {
+    color: #212529;
+    font-weight: 500;
+}
+
+/* Result video styling */
+.result-video {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .btn {
+        padding: 0.6rem 1.2rem;
+    }
+}
+
+/* Status indicators */
+.status-processing {
+    color: var(--warning-color);
+}
+
+.status-completed {
+    color: var(--success-color);
+}
+
+.status-failed {
+    color: var(--danger-color);
+}
+
+/* Feature cards */
+.card h-100 {
+    transition: all 0.3s ease;
+}
+
+.card h-100:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
