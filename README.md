@@ -57,7 +57,7 @@ graph TD
     A[YouTube URL Input] --> B[VideoDB Processing]
     B --> C[Video Upload & Analysis]
     C --> D[Transcript Extraction]
-    D --> E[OpenAI GPT-4 Translation]
+    D --> E[OpenAI GPT-40-mini Translation]
     E --> F[ElevenLabs Voice Synthesis]
     F --> G[VideoDB Audio Integration]
     G --> H[Final Dubbed Video]
@@ -101,15 +101,6 @@ graph TD
 - **API Documentation**: Automatic OpenAPI/Swagger documentation
 - **Logging**: Comprehensive application logging and monitoring
 
-## 📊 Performance Metrics
-
-| Metric | Traditional Dubbing | AI Dubbing Platform | Improvement |
-|--------|-------------------|-------------------|-------------|
-| **Processing Time** | 2-4 weeks | Under 2 minutes | **99.9% faster** |
-| **Cost** | $5,000-$15,000 | $5-$20 | **99.9% cheaper** |
-| **Languages** | Limited | 12+ languages | **Unlimited scaling** |
-| **Quality** | Professional | Professional | **Equivalent quality** |
-| **Accessibility** | Studios only | Anyone with internet | **Democratized** |
 
 ## 🚀 Quick Start Guide
 
@@ -419,27 +410,8 @@ SUPPORTED_LANGUAGES=en,es,fr,de,it,pt,ru,ja,ko,zh,hi,ar
 - **Performance Metrics**: Processing time tracking
 - **Error Handling**: Graceful error recovery and user feedback
 
-## 🧪 Testing & Quality Assurance
 
-### **Testing Strategy**
-```bash
-# Unit tests for individual services
-python -m pytest tests/test_dubbing_service.py
-python -m pytest tests/test_translation_service.py
-python -m pytest tests/test_voice_service.py
 
-# Integration tests for API endpoints
-python -m pytest tests/test_api_endpoints.py
-
-# End-to-end tests with real videos
-python -m pytest tests/test_e2e_dubbing.py
-```
-
-### **Quality Metrics**
-- **Translation Accuracy**: BLEU score evaluation
-- **Voice Quality**: MOS (Mean Opinion Score) testing
-- **Processing Speed**: Latency benchmarking
-- **Error Rate**: Failure rate monitoring
 
 ## 🤝 Contributing
 
