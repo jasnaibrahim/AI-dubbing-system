@@ -5,15 +5,15 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-> **Built for the AI Demos X VideoDB Hackathon** - A revolutionary AI-powered platform that transforms any YouTube video into 12+ languages in under 60 seconds.
+> **Built for the AI Demos X VideoDB Hackathon** - A revolutionary AI-powered platform that transforms any YouTube video into 12+ languages in minutes.
 
 ## 🌟 Project Overview
 
-This AI dubbing platform democratizes video localization by combining three cutting-edge AI services: **VideoDB** for video processing, **OpenAI GPT-4** for intelligent translation, and **ElevenLabs** for natural voice synthesis. What traditionally takes weeks and costs thousands of dollars can now be accomplished in minutes for under $20.
+This AI dubbing platform democratizes video localization by combining three cutting-edge AI services: **VideoDB** for video processing, **OpenAI GPT-4o-mini** for intelligent translation, and **ElevenLabs** for natural voice synthesis. What traditionally takes weeks and costs thousands of dollars can now be accomplished in minutes.
 
 ### 🎯 Problem Statement
 - 75% of internet users don't speak English as their primary language
-- Traditional dubbing costs $5,000-$15,000 and takes 2-4 weeks
+- Traditional dubbing is expensive and time consuming
 - Content creators lose massive global audience due to language barriers
 - Professional dubbing is inaccessible to individual creators and small businesses
 
@@ -21,8 +21,8 @@ This AI dubbing platform democratizes video localization by combining three cutt
 An AI-powered platform that:
 - Processes any YouTube video in real-time
 - Generates professional-quality dubs in 12+ languages
-- Reduces cost by 99.9% (from $5,000+ to $5-20)
-- Reduces time by 99.9% (from weeks to minutes)
+- Reduces cost 
+- Reduces time 
 
 ## ✨ Key Features
 
@@ -471,7 +471,6 @@ This project was built for the **AI Demos X VideoDB Hackathon**, showcasing the 
 - **Spread the word** about AI-powered content creation
 
 ---
-
 ## 🎉 Acknowledgments
 
 Special thanks to:

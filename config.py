@@ -13,7 +13,7 @@ class Config:
     
     # API Keys
     VIDEODB_API_KEY = os.getenv("VIDEODB_API_KEY")
-    ELEVENLABS_API_KEY = "sk_6797bed350f0ccd70689e3d615b07ac45c93b53208fdee64"
+    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     
     # Application settings
