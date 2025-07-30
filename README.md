@@ -254,7 +254,7 @@ Open your browser and navigate to: **http://localhost:8000**
 ## 🔧 Development 
 
 ### **Project Structure**
-'''
+
 ai-dubbing-platform/
 ├── main.py                 # FastAPI application entry point
 ├── config.py              # Configuration management
@@ -276,7 +276,7 @@ ai-dubbing-platform/
 └── docs/                # Documentation
     ├── API_DOCUMENTATION.md
     └── DEPLOYMENT.md
-```
+
 
 ### **Local Development**
 ```bash
@@ -287,7 +287,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 
-```
+'''
 
 ### **Production Deployment**
 
