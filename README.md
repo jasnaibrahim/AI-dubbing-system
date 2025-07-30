@@ -226,83 +226,6 @@ Open your browser and navigate to: **http://localhost:8000**
 - Compare original vs dubbed versions
 - Share or embed the final result
 
-### **API Integration**
-
-#### **Basic Usage**
-```python
-from services.dubbing_service import DubbingService
-
-# Initialize the service
-service = DubbingService()
-
-# Dub a video
-result = service.dub_video(
-    youtube_url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    target_language="es",  # Spanish
-    voice_id="EXAVITQu4vr4xnSDxMaL",  # Optional: specific voice
-    clone_original_voice=False  # Optional: voice cloning
-)
-
-print(f"Dubbed video URL: {result.video_url}")
-print(f"Processing time: {result.processing_time}")
-print(f"Target language: {result.target_language}")
-```
-
-#### **Advanced Usage with Error Handling**
-```python
-import asyncio
-from services.dubbing_service import DubbingService
-
-async def dub_video_async():
-    try:
-        service = DubbingService()
-
-        # Preview translation first
-        preview = service.preview_translation(
-            youtube_url="https://www.youtube.com/watch?v=example",
-            target_language="fr"
-        )
-        print(f"Translation preview: {preview.translated_text[:100]}...")
-
-        # Proceed with dubbing
-        result = service.dub_video(
-            youtube_url="https://www.youtube.com/watch?v=example",
-            target_language="fr",
-            clone_original_voice=True
-        )
-
-        return result
-
-    except Exception as e:
-        print(f"Dubbing failed: {str(e)}")
-        return None
-
-# Run async function
-result = asyncio.run(dub_video_async())
-```
-
-#### **REST API Endpoints**
-
-**Start Dubbing Process:**
-```bash
-curl -X POST "http://localhost:8000/api/dub-video" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "youtube_url": "https://www.youtube.com/watch?v=example",
-       "target_language": "es",
-       "voice_id": "EXAVITQu4vr4xnSDxMaL",
-       "clone_original_voice": false
-     }'
-```
-
-**Check Job Status:**
-```bash
-curl -X GET "http://localhost:8000/api/job-status/{job_id}"
-```
-
-**Get Available Voices:**
-```bash
-curl -X GET "http://localhost:8000/api/voices?language=es"
 ```
 
 ## 🌍 Supported Languages & Voices
@@ -328,7 +251,7 @@ curl -X GET "http://localhost:8000/api/voices?language=es"
 - **Cultural Adaptation**: Proper pronunciation and cultural context
 - **Voice Cloning**: Advanced option to maintain original speaker characteristics
 
-## 🔧 Development & Deployment
+## 🔧 Development 
 
 ### **Project Structure**
 ```
@@ -363,12 +286,7 @@ pip install -r requirements.txt
 # Run with auto-reload for development
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Run tests (if available)
-pytest tests/
 
-# Check code quality
-flake8 .
-black .
 ```
 
 ### **Production Deployment**
@@ -404,42 +322,7 @@ OPENAI_MODEL=gpt-4o-mini
 SUPPORTED_LANGUAGES=en,es,fr,de,it,pt,ru,ja,ko,zh,hi,ar
 ```
 
-### **Monitoring & Logging**
-- **Application Logs**: Comprehensive logging to `ai_dubbing.log`
-- **Health Checks**: `/api/health` endpoint for monitoring
-- **Performance Metrics**: Processing time tracking
-- **Error Handling**: Graceful error recovery and user feedback
 
-
-
-
-## 🤝 Contributing
-
-We welcome contributions to improve the AI Dubbing Platform! Here's how you can help:
-
-### **Getting Started**
-1. **Fork the repository** on GitHub
-2. **Clone your fork** locally
-3. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
-4. **Make your changes** with proper testing
-5. **Commit your changes** (`git commit -m 'Add amazing feature'`)
-6. **Push to the branch** (`git push origin feature/amazing-feature`)
-7. **Open a Pull Request** with detailed description
-
-### **Contribution Guidelines**
-- **Code Style**: Follow PEP 8 guidelines
-- **Documentation**: Update README and docstrings
-- **Testing**: Add tests for new features
-- **API Compatibility**: Maintain backward compatibility
-- **Performance**: Consider impact on processing speed
-
-### **Areas for Contribution**
-- **New Language Support**: Add support for additional languages
-- **Voice Quality Improvements**: Enhance voice synthesis parameters
-- **UI/UX Enhancements**: Improve web interface design
-- **Performance Optimization**: Speed up processing pipeline
-- **Error Handling**: Improve robustness and error recovery
-- **Documentation**: Expand guides and tutorials
 
 ## 📄 License
 
