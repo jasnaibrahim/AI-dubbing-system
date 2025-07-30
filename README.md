@@ -226,7 +226,7 @@ Open your browser and navigate to: **http://localhost:8000**
 - Compare original vs dubbed versions
 - Share or embed the final result
 
-```
+
 
 ## 🌍 Supported Languages & Voices
 
@@ -254,7 +254,7 @@ Open your browser and navigate to: **http://localhost:8000**
 ## 🔧 Development 
 
 ### **Project Structure**
-```
+'''
 ai-dubbing-platform/
 ├── main.py                 # FastAPI application entry point
 ├── config.py              # Configuration management
