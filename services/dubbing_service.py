@@ -119,8 +119,24 @@ class DubbingService:
             logger.info("Step 6: Preparing voice for dubbing")
             if clone_original_voice:
                 voice_id = self._clone_original_voice(original_video, target_language)
-            elif not voice_id:
+            elif not voice_id or voice_id.strip() == "":
                 voice_id = self.voice_service.get_default_voice_id(target_language)
+
+            # Get voice info for debugging
+            try:
+                voice_info = self.voice_service.get_voice_info(voice_id)
+                voice_name = voice_info.get("name", "Unknown")
+                voice_labels = voice_info.get("labels", {})
+                voice_gender = voice_labels.get("gender", "unknown")
+                voice_age = voice_labels.get("age", "unknown")
+
+                logger.info(f"🎤 Using voice: {voice_name} ({voice_gender}, {voice_age})")
+                logger.info(f"🆔 Voice ID: {voice_id}")
+                logger.info(f"🌍 Language: {target_language}")
+
+            except Exception as voice_info_error:
+                logger.warning(f"Could not get voice info: {voice_info_error}")
+                logger.info(f"🎤 Using voice ID: {voice_id} for language: {target_language}")
             
             # Step 7: Generate dubbed audio
             logger.info("Step 7: Generating dubbed audio")
@@ -142,16 +158,25 @@ class DubbingService:
 
                 # Step 8: Create dubbed video
                 logger.info("Step 8: Creating final dubbed video")
+                logger.info(f"🎬 Original video ID: {original_video.id}")
+                logger.info(f"🎵 Audio file path: {audio_file_path}")
+                logger.info(f"📁 Audio file exists: {os.path.exists(audio_file_path)}")
+                logger.info(f"📊 Audio file size: {os.path.getsize(audio_file_path) if os.path.exists(audio_file_path) else 'N/A'} bytes")
+
                 dubbed_video_url = self.videodb_service.create_dubbed_video(
                     original_video,
                     audio_file_path
                 )
 
-                logger.info("Dubbing process completed successfully")
+                logger.info("✅ Dubbing process completed successfully")
+                logger.info(f"🎥 Final dubbed video URL: {dubbed_video_url}")
 
             except Exception as voice_error:
-                logger.warning(f"Voice generation failed: {voice_error}")
-                logger.info("🎭 DEMO MODE: Voice synthesis unavailable, but translation completed successfully!")
+                logger.error(f"❌ Dubbing process failed: {voice_error}")
+                logger.error(f"🔍 Error type: {type(voice_error).__name__}")
+                import traceback
+                logger.error(f"📋 Full traceback: {traceback.format_exc()}")
+                logger.warning("🎭 FALLING BACK TO DEMO MODE: Returning original video")
                 logger.info("📝 Translation pipeline worked perfectly - showing original video with translation info")
 
                 # In demo mode, we'll return the original video but mark it clearly as demo
@@ -171,9 +196,20 @@ class DubbingService:
                 audio_file_path = "demo_mode_translation_complete.txt"
 
 
-            
-            logger.info("Dubbing process completed successfully")
-            
+
+            logger.info("✅ Dubbing process completed successfully")
+
+            # Optional: Clean up cloned voice after successful dubbing
+            # Note: You might want to keep cloned voices for reuse
+            if clone_original_voice and voice_id != self.voice_service.get_default_voice_id(target_language):
+                try:
+                    logger.info(f"🗑️ Cleaning up cloned voice: {voice_id}")
+                    # Uncomment the next line if you want to auto-delete cloned voices
+                    # self.voice_service.delete_voice(voice_id)
+                    logger.info("ℹ️ Cloned voice preserved for potential reuse")
+                except Exception as cleanup_error:
+                    logger.warning(f"⚠️ Voice cleanup note: {cleanup_error}")
+
             return DubbingResult(
                 video_url=dubbed_video_url,
                 original_video_id=original_video.id,
@@ -191,34 +227,110 @@ class DubbingService:
     def _clone_original_voice(self, video, target_language: str) -> str:
         """
         Clone the original speaker's voice from the video
-        
+
         Args:
             video: VideoDB Video object
             target_language: Target language for the voice
-            
+
         Returns:
             Voice ID of the cloned voice
         """
         try:
-            logger.info("Attempting to clone original voice")
-            
-            # Extract audio from original video
-            # Note: This is a simplified approach. In production, you'd want to:
-            # 1. Extract clean speech segments
-            # 2. Remove background noise
-            # 3. Select the best quality samples
-            
-            # For now, we'll use a default voice
-            # In a full implementation, you would:
-            # 1. Extract audio from the video
-            # 2. Process it to get clean voice samples
-            # 3. Use ElevenLabs voice cloning API
-            
-            logger.warning("Voice cloning not fully implemented, using default voice")
-            return self.voice_service.get_default_voice_id(target_language)
-            
+            logger.info("🎭 Attempting to clone original voice from video")
+
+            # Step 1: Extract audio from the video
+            logger.info("📤 Extracting audio from original video...")
+
+            # Try to get audio from VideoDB video
+            try:
+                # VideoDB videos might have different methods to access audio
+                if hasattr(video, 'get_audio'):
+                    audio_stream = video.get_audio()
+                elif hasattr(video, 'audio'):
+                    audio_stream = video.audio
+                elif hasattr(video, 'stream_url'):
+                    # Use the video stream URL directly for audio extraction
+                    audio_stream = video.stream_url
+                else:
+                    logger.warning("❌ Could not find audio extraction method")
+                    logger.info("🔄 Falling back to default voice")
+                    return self.voice_service.get_default_voice_id(target_language)
+
+                if not audio_stream:
+                    logger.warning("❌ Could not extract audio from video")
+                    logger.info("🔄 Falling back to default voice")
+                    return self.voice_service.get_default_voice_id(target_language)
+
+            except Exception as audio_error:
+                logger.error(f"❌ Audio extraction failed: {audio_error}")
+                logger.info("🔄 Falling back to default voice")
+                return self.voice_service.get_default_voice_id(target_language)
+
+            # Step 2: Download audio to temporary file
+            import tempfile
+            import os
+            import requests
+
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio:
+                temp_audio_path = temp_audio.name
+
+                # Download audio stream
+                logger.info(f"💾 Downloading audio to: {temp_audio_path}")
+
+                try:
+                    if hasattr(audio_stream, 'download'):
+                        # If it's a VideoDB stream object with download method
+                        audio_stream.download(temp_audio_path)
+                    elif isinstance(audio_stream, str):
+                        # If it's a URL string, download it
+                        response = requests.get(audio_stream)
+                        response.raise_for_status()
+                        with open(temp_audio_path, 'wb') as f:
+                            f.write(response.content)
+                    else:
+                        # Try to write directly if it's binary data
+                        with open(temp_audio_path, 'wb') as f:
+                            f.write(audio_stream)
+
+                    logger.info(f"✅ Audio downloaded successfully: {os.path.getsize(temp_audio_path)} bytes")
+
+                except Exception as download_error:
+                    logger.error(f"❌ Audio download failed: {download_error}")
+                    os.unlink(temp_audio_path)  # Clean up
+                    logger.info("🔄 Falling back to default voice")
+                    return self.voice_service.get_default_voice_id(target_language)
+
+                # Step 3: Validate audio file for voice cloning
+                file_size = os.path.getsize(temp_audio_path)
+                if file_size < 1024:  # Less than 1KB
+                    logger.warning(f"❌ Audio file too small for voice cloning: {file_size} bytes")
+                    os.unlink(temp_audio_path)
+                    logger.info("🔄 Falling back to default voice")
+                    return self.voice_service.get_default_voice_id(target_language)
+
+                # Step 4: Clone voice using ElevenLabs
+                voice_name = f"Cloned_Voice_{video.id}_{target_language}"
+                description = f"Cloned voice from video {video.id} for {target_language} dubbing"
+
+                logger.info(f"🎤 Creating cloned voice: {voice_name}")
+                logger.info(f"📊 Audio file size: {file_size} bytes")
+
+                cloned_voice_id = self.voice_service.clone_voice_from_audio(
+                    audio_file_path=temp_audio_path,
+                    voice_name=voice_name,
+                    description=description
+                )
+
+                # Clean up temporary file
+                os.unlink(temp_audio_path)
+                logger.info(f"🗑️ Cleaned up temporary audio file")
+
+                logger.info(f"✅ Voice cloned successfully! Voice ID: {cloned_voice_id}")
+                return cloned_voice_id
+
         except Exception as e:
-            logger.error(f"Voice cloning failed, using default voice: {str(e)}")
+            logger.error(f"❌ Voice cloning failed: {str(e)}")
+            logger.info("🔄 Falling back to default voice for language")
             return self.voice_service.get_default_voice_id(target_language)
     
     def get_supported_languages(self) -> Dict[str, str]:

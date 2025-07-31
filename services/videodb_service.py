@@ -198,8 +198,11 @@ class VideoDBService:
 
 
             # Generate the dubbed video stream
+            logger.info("🎬 Generating final video stream...")
             dubbed_stream = timeline.generate_stream()
-            logger.info(f"Dubbed video created successfully: {dubbed_stream}")
+            logger.info(f"✅ Dubbed video created successfully: {dubbed_stream}")
+            logger.info(f"🔗 Final video URL type: {type(dubbed_stream)}")
+            logger.info(f"📏 Final video URL length: {len(str(dubbed_stream))}")
             return dubbed_stream
             
         except Exception as e:

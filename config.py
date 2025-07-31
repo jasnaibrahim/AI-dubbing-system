@@ -51,7 +51,7 @@ class Config:
     
     # OpenAI settings
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    OPENAI_MAX_TOKENS = 4000
+    OPENAI_MAX_TOKENS = 10000
     
     # VideoDB settings
     VIDEODB_BASE_URL = "https://api.videodb.io"

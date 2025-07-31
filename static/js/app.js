@@ -42,7 +42,12 @@ class DubbingApp {
             data.voices.forEach(voice => {
                 const option = document.createElement('option');
                 option.value = voice.voice_id;
-                option.textContent = `${voice.name} (${voice.category || 'General'})`;
+
+                // Use enhanced display name if available, otherwise fallback to basic info
+                const displayName = voice.display_name ||
+                    `${voice.name} (${voice.gender || voice.category || 'General'})`;
+
+                option.textContent = displayName;
                 voiceSelect.appendChild(option);
             });
         } catch (error) {
@@ -190,11 +195,28 @@ class DubbingApp {
         }, 1000); // Poll every 1 second for better responsiveness
     }
 
+    stopPolling() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+        }
+    }
+
     async checkJobStatus() {
         if (!this.currentJobId) return;
 
         try {
             const response = await fetch(`/api/job-status/${this.currentJobId}`);
+
+            // Handle 404 - job not found (server restarted)
+            if (response.status === 404) {
+                this.stopPolling();
+                this.hideProgress();
+                this.showAlert('⚠️ Job not found. The server may have restarted. Please start a new dubbing job.', 'warning');
+                this.currentJobId = null; // Clear the job ID
+                return;
+            }
+
             const data = await response.json();
 
             this.updateProgress(data);
@@ -207,6 +229,9 @@ class DubbingApp {
 
         } catch (error) {
             console.error('Failed to check job status:', error);
+            this.stopPolling();
+            this.hideProgress();
+            this.showAlert('Error checking job status. Please try again.', 'danger');
         }
     }
 
@@ -319,7 +344,7 @@ class DubbingApp {
                         <i class="fas fa-${isSuccessfulDubbing ? 'microphone' : (isDemoMode ? 'play' : 'external-link-alt')} me-2"></i>
                         ${isSuccessfulDubbing ? '🎤 Play AI-Dubbed Video' : (isDemoMode ? 'View Original Video' : 'Open Video in New Tab')}
                     </a>
-                    <button class="btn btn-outline-secondary" onclick="app.copyToClipboard('${result.video_url}')">
+                    <button class="btn btn-outline-secondary" onclick="app.copyToClipboard(\`${result.video_url}\`)">
                         <i class="fas fa-copy me-2"></i>
                         Copy Video URL
                     </button>
@@ -404,7 +429,7 @@ class DubbingApp {
                                 <a href="${videoUrl}" class="btn btn-primary" target="_blank">
                                     <i class="fas fa-external-link-alt me-2"></i>Open in New Tab
                                 </a>
-                                <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${videoUrl}')">
+                                <button class="btn btn-outline-secondary" onclick="app.copyToClipboard('${videoUrl}')">
                                     <i class="fas fa-copy me-2"></i>Copy URL for VLC/Media Player
                                 </button>
                             </div>
@@ -431,11 +456,58 @@ class DubbingApp {
     }
 
     copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            this.showAlert('Video URL copied to clipboard!', 'success');
-        }).catch(() => {
-            this.showAlert('Failed to copy URL to clipboard.', 'warning');
-        });
+        // Check if the text is valid
+        if (!text || text.trim() === '') {
+            this.showAlert('No URL to copy!', 'warning');
+            return;
+        }
+
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showAlert('✅ Video URL copied to clipboard!', 'success');
+                console.log('Copied to clipboard:', text);
+            }).catch((err) => {
+                console.error('Clipboard API failed:', err);
+                this.fallbackCopyToClipboard(text);
+            });
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            this.fallbackCopyToClipboard(text);
+        }
+    }
+
+    fallbackCopyToClipboard(text) {
+        try {
+            // Create a temporary textarea element
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            // Try to copy using execCommand
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            if (successful) {
+                this.showAlert('✅ Video URL copied to clipboard!', 'success');
+                console.log('Fallback copy successful:', text);
+            } else {
+                this.showAlert('❌ Failed to copy URL. Please copy manually.', 'warning');
+                console.error('Fallback copy failed');
+                // Show the URL in a prompt as last resort
+                prompt('Copy this URL manually:', text);
+            }
+        } catch (err) {
+            console.error('Fallback copy error:', err);
+            this.showAlert('❌ Copy failed. Please copy manually.', 'warning');
+            // Show the URL in a prompt as last resort
+            prompt('Copy this URL manually:', text);
+        }
     }
 
     async showLogs() {

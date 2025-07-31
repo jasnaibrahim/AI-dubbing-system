@@ -6,8 +6,21 @@ from typing import List, Dict, Any, Optional
 import logging
 import json
 from config import config
+import os
 
+os.makedirs("logs", exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Set the minimum log level
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("logs/app.log"),  # Log file
+        logging.StreamHandler()               # Also print to console
+    ]
+)
 logger = logging.getLogger(__name__)
+
 
 class TranslationService:
     """Service for translating text using OpenAI API"""
@@ -67,9 +80,9 @@ class TranslationService:
                 max_tokens=config.OPENAI_MAX_TOKENS,
                 temperature=0
             )
-            
-            translated_text = response.choices[0].message.content.strip()
 
+            translated_text = response.choices[0].message.content.strip()
+   
             # Clean up common LLM response patterns
             unwanted_patterns = [
                 "Here is the translation:",
@@ -103,24 +116,30 @@ class TranslationService:
 
             logger.info(f"Text translated successfully to {target_language}")
             return translated_text
-            
+
+        except openai.RateLimitError as e:
+            logger.error(f"OpenAI rate limit exceeded: {e}")
+            raise Exception("Translation service temporarily unavailable - rate limit exceeded. Please try again later.")
+        except openai.AuthenticationError as e:
+            logger.error(f"OpenAI authentication failed: {e}")
+            raise Exception("Translation service authentication failed. Please check API key.")
         except Exception as e:
             logger.error(f"Translation failed: {str(e)}")
             raise
     
     def translate_transcript_segments(self, segments: List[Dict[str, Any]], target_language: str) -> List[Dict[str, Any]]:
         """
-        Translate transcript segments while preserving timing information
-        
+        Translate transcript segments while preserving timing information using a batching strategy.
+
         Args:
-            segments: List of transcript segments with timing
-            target_language: Target language code
-            
+            segments: List of transcript segments with timing.
+            target_language: Target language code.
+
         Returns:
-            List of translated segments with preserved timing
+            List of translated segments with preserved timing.
         """
         try:
-            logger.info(f"Translating {len(segments)} transcript segments to {target_language}")
+            logger.info(f"Translating {len(segments)} transcript segments to {target_language} using batching.")
 
             # Filter out empty/silence segments before processing
             filtered_segments = []
@@ -146,100 +165,100 @@ class TranslationService:
 
             logger.info(f"📊 Filtered segments: {len(filtered_segments)} valid, {empty_segments} empty/silence segments removed")
 
-            # Log all original transcript segments (filtered)
-            logger.info("=" * 80)
-            logger.info("📝 VALID TRANSCRIPT SEGMENTS (after filtering):")
-            logger.info("=" * 80)
-            for i, segment in enumerate(filtered_segments):
-                if isinstance(segment, dict):
-                    start_time = segment.get('start', 0)
-                    end_time = segment.get('end', 0)
-                    text = segment.get('text', '')
-                    logger.info(f"[{i+1:2d}] {start_time:6.2f}s - {end_time:6.2f}s: {text}")
-                elif hasattr(segment, 'text'):
-                    start_time = getattr(segment, 'start', 0)
-                    end_time = getattr(segment, 'end', 0)
-                    text = segment.text
-                    logger.info(f"[{i+1:2d}] {start_time:6.2f}s - {end_time:6.2f}s: {text}")
-                else:
-                    logger.info(f"[{i+1:2d}] {str(segment)}")
-            logger.info("=" * 80)
+            # Create a simple mapping: segment index -> text to translate
+            texts_to_translate = {}
 
-            # Use filtered segments for translation
-            segments = filtered_segments
+            for i, segment in enumerate(filtered_segments):
+                text = segment.get('text', '').strip()
+                # Include ALL non-empty text, even single characters
+                if text and text != '-':
+                    texts_to_translate[str(i)] = text
+                    logger.info(f"📝 Adding segment {i} for translation: '{text}'")
+
+            if not texts_to_translate:
+                logger.warning("No valid text segments found to translate.")
+                return []
+
+            # Create a JSON string from the dictionary to pass to the model.
+            json_input = json.dumps(texts_to_translate, indent=2, ensure_ascii=False)
+            target_lang_name = config.LANGUAGE_NAMES.get(target_language, target_language)
+
+            prompt = f"""
+Translate the text values in the following JSON object from their original language to {target_lang_name}.
+- Respond with a valid JSON object only.
+- The JSON object must have the same keys as the input.
+- The value for each key in your response should be the translated text corresponding to that key's original text.
+- Maintain the original meaning, tone, and style. Do not add any extra explanations or text outside of the JSON object.
+
+Input JSON:
+{json_input}
+"""
+
+            logger.info(f"Sending batch translation request to OpenAI model: {config.OPENAI_MODEL}")
+            response = self.client.chat.completions.create(
+                model=config.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": f"You are an expert translation engine. Your task is to translate the text in the provided JSON object to {target_lang_name} and return a valid JSON object."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=config.OPENAI_MAX_TOKENS,
+                temperature=0.1, # Slightly non-zero for better natural language, but still deterministic
+                response_format={"type": "json_object"} # Use JSON mode for reliable output
+            )
+
+            response_content = response.choices[0].message.content.strip()
+            logger.info(f"🤖 OpenAI Response: {response_content[:500]}...")
+
+            # Parse the JSON response from the model
+            translated_texts_map = json.loads(response_content)
+            logger.info(f"📊 Translated {len(translated_texts_map)} items from OpenAI")
 
             translated_segments = []
 
-            # Process segments individually to avoid LLM formatting issues
-            for segment in segments:
-                try:
-                    # Extract text from segment
-                    if isinstance(segment, dict) and 'text' in segment:
-                        original_text = segment['text']
-                    elif hasattr(segment, 'text'):
-                        original_text = segment.text
+            # Process all filtered segments
+            for i, segment in enumerate(filtered_segments):
+                original_text = segment.get('text', '').strip()
+
+                # Check if this segment was translated
+                if str(i) in translated_texts_map:
+                    translated_text = translated_texts_map[str(i)]
+                    logger.info(f"✅ Segment {i}: '{original_text}' → '{translated_text}'")
+                else:
+                    # For untranslated segments, try to translate individually
+                    if original_text and original_text != '-' and len(original_text) > 0:
+                        logger.warning(f"⚠️ Segment {i} missing from batch translation: '{original_text}'")
+                        try:
+                            # Fallback: translate individual segment
+                            individual_translation = self.translate_text(original_text, target_language)
+                            translated_text = individual_translation
+                            logger.info(f"🔄 Individual translation: '{original_text}' → '{translated_text}'")
+                        except Exception as e:
+                            logger.error(f"❌ Individual translation failed for '{original_text}': {e}")
+                            translated_text = original_text
                     else:
-                        original_text = str(segment)
+                        translated_text = original_text
 
-                    # Skip empty texts
-                    if not original_text.strip():
-                        continue
+                # Create the new translated segment dictionary
+                translated_segment = segment.copy()
+                translated_segment['text'] = translated_text
+                translated_segment['original_text'] = original_text
+                translated_segments.append(translated_segment)
 
-                    # Translate individual segment
-                    translated_text = self.translate_text(original_text, target_language)
-
-                    # Clean up any unwanted formatting from LLM
-                    translated_text = translated_text.strip()
-                    # Remove common LLM response patterns
-                    if translated_text.startswith(("Here's", "The translation", "Translated:", "Translation:")):
-                        lines = translated_text.split('\n')
-                        for line in lines:
-                            line = line.strip()
-                            if line and not line.startswith(("Here's", "The translation", "Translated:", "Translation:", "-", "*")):
-                                translated_text = line
-                                break
-
-                    # Create translated segment
-                    translated_segment = segment.copy() if isinstance(segment, dict) else {
-                        'start': getattr(segment, 'start', 0),
-                        'end': getattr(segment, 'end', 0),
-                        'text': getattr(segment, 'text', str(segment))
-                    }
-                    translated_segment['text'] = translated_text
-                    translated_segment['original_text'] = original_text
-                    translated_segments.append(translated_segment)
-
-                except Exception as e:
-                    logger.error(f"Failed to translate segment '{original_text}': {e}")
-                    # Keep original segment if translation fails
-                    translated_segment = segment.copy() if isinstance(segment, dict) else {
-                        'start': getattr(segment, 'start', 0),
-                        'end': getattr(segment, 'end', 0),
-                        'text': getattr(segment, 'text', str(segment))
-                    }
-                    translated_segment['original_text'] = original_text
-                    translated_segments.append(translated_segment)
-            
-            # Log all translated segments
-            logger.info("=" * 80)
-            logger.info(f"🌍 TRANSLATED SEGMENTS ({target_language.upper()}):")
-            logger.info("=" * 80)
-            for i, segment in enumerate(translated_segments):
-                start_time = segment.get('start', 0)
-                end_time = segment.get('end', 0)
-                original_text = segment.get('original_text', '')
-                translated_text = segment.get('text', '')
-                logger.info(f"[{i+1:2d}] {start_time:6.2f}s - {end_time:6.2f}s:")
-                logger.info(f"     Original: {original_text}")
-                logger.info(f"     Translated: {translated_text}")
-                logger.info("")
-            logger.info("=" * 80)
-
-            logger.info(f"Successfully translated {len(translated_segments)} segments")
+            logger.info(f"✅ Successfully translated {len(translated_segments)} segments in a single batch.")
             return translated_segments
-            
+
+        except openai.RateLimitError as e:
+            logger.error(f"OpenAI rate limit exceeded: {e}")
+            raise Exception("Translation service temporarily unavailable - rate limit exceeded. Please try again later.")
+        except openai.AuthenticationError as e:
+            logger.error(f"OpenAI authentication failed: {e}")
+            raise Exception("Translation service authentication failed. Please check API key.")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response from OpenAI: {e}")
+            logger.error(f"Raw model response: {response_content}")
+            raise Exception("Translation service returned invalid response format.")
         except Exception as e:
-            logger.error(f"Failed to translate transcript segments: {str(e)}")
+            logger.error(f"Failed to translate transcript segments: {e}")
             raise
     
     def detect_language(self, text: str) -> str:

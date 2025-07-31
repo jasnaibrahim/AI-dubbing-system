@@ -46,7 +46,19 @@ class VoiceService:
             
             voices_data = response.json()
             voices = voices_data.get("voices", [])
-            
+
+            # Add gender and age info to voice names for better selection
+            for voice in voices:
+                labels = voice.get("labels", {})
+                gender = labels.get("gender", "unknown")
+                age = labels.get("age", "unknown")
+                original_name = voice.get("name", "Unknown")
+
+                # Enhance voice name with gender/age info
+                voice["display_name"] = f"{original_name} ({gender}, {age})"
+                voice["gender"] = gender
+                voice["age"] = age
+
             logger.info(f"Retrieved {len(voices)} available voices")
             return voices
             
@@ -131,19 +143,30 @@ class VoiceService:
                 "voice_settings": config.ELEVENLABS_VOICE_SETTINGS
             }
 
-            logger.info(f"Generating speech with voice {voice_id} and model {model_id}")
+            logger.info(f"🎤 Generating speech with voice {voice_id} and model {model_id}")
+            logger.info(f"🔊 Voice settings: {config.ELEVENLABS_VOICE_SETTINGS}")
+            logger.info(f"🔑 Using API key: {self.api_key[:20]}...")
+            logger.info(f"📡 Request URL: {url}")
+
             response = requests.post(url, json=data, headers=self.headers)
+
+            logger.info(f"📊 Response status: {response.status_code}")
 
             if response.status_code == 401:
                 logger.error("ElevenLabs API key is invalid or expired")
+                logger.error(f"📄 Response body: {response.text}")
                 raise Exception("ElevenLabs API authentication failed. Please check your API key.")
             elif response.status_code == 422:
                 logger.error(f"Invalid voice ID: {voice_id}")
+                logger.error(f"📄 Response body: {response.text}")
                 raise Exception(f"Voice ID {voice_id} is not valid. Please check available voices.")
+            elif response.status_code != 200:
+                logger.error(f"ElevenLabs API error: {response.status_code}")
+                logger.error(f"📄 Response body: {response.text}")
 
             response.raise_for_status()
 
-            logger.info(f"Speech generated successfully for voice {voice_id}")
+            logger.info(f"Speech generated successfully for voice {voice_id}: {len(response.content)} bytes")
             return response.content
 
         except Exception as e:
@@ -164,7 +187,8 @@ class VoiceService:
             Path to the generated audio file
         """
         try:
-            logger.info(f"Generating speech for {len(segments)} segments")
+            logger.info(f"🎤 Generating speech for {len(segments)} segments using voice: {voice_id}")
+            logger.info(f"🔊 Voice ID being used: {voice_id}")
 
             # Log all segments that will be synthesized
             logger.info("=" * 80)
@@ -201,19 +225,26 @@ class VoiceService:
             logger.info(f"Estimated speech duration: ~{len(combined_text) / 10:.1f} seconds")
 
             try:
+                # Check if this is a demo voice ID
+                if voice_id.startswith("demo_"):
+                    logger.warning(f"Demo voice ID detected: {voice_id}")
+                    logger.info("🎭 Voice synthesis unavailable - using demo mode")
+                    return "DEMO_MODE_NO_AUDIO"
+
                 # Generate speech for combined text
+                logger.info(f"🎤 Attempting to generate speech with voice: {voice_id}")
                 audio_data = self.generate_speech(combined_text, voice_id)
 
                 # Write audio data to file
                 with open(temp_audio_file.name, 'wb') as f:
                     f.write(audio_data)
 
-                logger.info(f"Combined audio saved to: {temp_audio_file.name}")
+                logger.info(f"✅ Combined audio saved to: {temp_audio_file.name}")
                 return temp_audio_file.name
 
             except Exception as api_error:
-                logger.warning(f"ElevenLabs API failed: {api_error}")
-                logger.info("Voice synthesis unavailable - ElevenLabs API key needed")
+                logger.warning(f"❌ ElevenLabs API failed: {api_error}")
+                logger.info("🎭 Voice synthesis unavailable - falling back to demo mode")
                 return "DEMO_MODE_NO_AUDIO"
 
         except Exception as e:
@@ -283,27 +314,38 @@ class VoiceService:
             # First, try to get available voices to use real voice IDs
             voices = self.get_available_voices()
 
-            if voices:
-                # Use the first available voice as default
+            if voices and not voices[0].get("voice_id", "").startswith("demo_"):
+                # Try to find a male voice for the language first
+                male_voices = [v for v in voices if v.get("gender") == "male"]
+
+                if male_voices:
+                    # Use the first male voice available
+                    male_voice = male_voices[0]
+                    voice_id = male_voice.get("voice_id")
+                    voice_name = male_voice.get("name")
+                    logger.info(f"Using male voice: {voice_id} ({voice_name})")
+                    return voice_id
+
+                # If no male voices, use the first available voice
                 first_voice_id = voices[0].get("voice_id")
-                logger.info(f"Using first available voice: {first_voice_id}")
+                logger.info(f"Using first available voice: {first_voice_id} ({voices[0].get('name')})")
                 return first_voice_id
 
-            # If no voices available, use known working voice IDs
-            # These are common ElevenLabs voice IDs that usually work
+            # If no voices available, use actual working voice IDs from your account
+            # Using male voices as defaults for variety
             language_defaults = {
-                "en": "EXAVITQu4vr4xnSDxMaL",  # Bella (English)
-                "es": "EXAVITQu4vr4xnSDxMaL",  # Bella (works for Spanish too)
-                "fr": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "de": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "it": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "pt": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "ru": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "ja": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "ko": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "zh": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "hi": "EXAVITQu4vr4xnSDxMaL",  # Bella (multilingual)
-                "ar": "EXAVITQu4vr4xnSDxMaL"   # Bella (multilingual)
+                "en": "IKne3meq5aSn9XLyUdCD",  # Charlie (young male)
+                "es": "JBFqnCBsd6RMkjVDRZzb",  # George (middle-aged male)
+                "fr": "N2lVS1w4EtoT3dr4eOWO",  # Callum (middle-aged male)
+                "de": "TX3LPaxmHKxFdv7VOQHJ",  # Liam (young male)
+                "it": "bIHbv24MWmeRgasZH58o",  # Will (young male)
+                "pt": "cjVigY5qzO86Huf0OWal",  # Eric (middle-aged male)
+                "ru": "iP95p4xoKVk53GoZ742B",  # Chris (middle-aged male)
+                "ja": "nPczCjzI2devNBz1zQrb",  # Brian (middle-aged male)
+                "ko": "onwK4e9ZLuTAKqWW03F9",  # Daniel (middle-aged male)
+                "zh": "pqHfZKP75CvOlQylNhV4",  # Bill (old male)
+                "hi": "IKne3meq5aSn9XLyUdCD",  # Charlie (fallback)
+                "ar": "onwK4e9ZLuTAKqWW03F9"   # Daniel (middle-aged male)
             }
 
             default_voice_id = language_defaults.get(language, "EXAVITQu4vr4xnSDxMaL")
